@@ -162,7 +162,7 @@
                             sql: "UPDATE licencias SET codigo_activacion = ?, estado = 'activo' WHERE id = ?;",
                             args: [
                                 { type: "text", value: nuevoCodigo },
-                                { type: "integer", value: id }
+                                { type: "integer", value: Number(id) }
                             ]
                         }
                     },
@@ -180,11 +180,14 @@
                     body: JSON.stringify(bodyData)
                 });
 
-                if (response.ok) {
-                    alert(`¡Licencia #${id} aprobada y código guardado con éxito!`);
+                const resultJson = await response.json();
+
+                if (response.ok && !resultJson.results[0].response.error) {
+                    alert(`¡Licencia #${id} aprobada y código guardado con éxito! Ya puedes copiarlo y enviarlo al usuario.`);
                     cargarSolicitudes();
                 } else {
-                    alert("Hubo un error al actualizar la base de datos.");
+                    console.error("Error devuelto por Turso:", resultJson);
+                    alert("Hubo un error al actualizar la base de datos. Revisa la consola (F12).");
                 }
             } catch (error) {
                 console.error(error);
