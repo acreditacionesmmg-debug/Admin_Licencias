@@ -51,9 +51,10 @@
         </div>
     </div>
 
+    <!-- Script conectado mediante el puente de Cloudflare -->
     <script>
-        // URL directa de tu base de datos en Turso
-        const urlHttp = "https://aplicativos-acreditacionesmmg.aws-us-east-1.turso.io/v2/pipeline";
+        // Apuntando al Worker creado en Cloudflare como puente seguro
+        const urlHttp = "https://turso-puente.acreditacionesmmg.workers.dev/";
         const tursoToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzOTA3ODQsImlkIjoiMDE5ZmVkMmItOGUwMS03NTBmLWE1OTctMzA5Mzk3NThhZDNiIiwia2lkIjoibGlxd0NQQ1RjVzZLMTJEUWNJMVhVejRCeGZUMWFnT3FDbHZ2Y3RnZ1BqQSIsInJpZCI6IjFjOTgzZGExLWI4MGUtNGE3OS05MjIxLTNhMDc1M2UyYzU0YiJ9.3KWHzJajGz62k_P-mvvBj25I1kwY8ZTJvSUCXUO61sILuwvZTpJoxzdLWr39nZI3DofY2PV_lVGW5BS4QunfAQ";
 
         async function cargarSolicitudes() {
@@ -62,7 +63,10 @@
 
             const bodyData = {
                 requests: [
-                    { type: "execute", stmt: { sql: "SELECT * FROM licencias ORDER BY id DESC;" } },
+                    {
+                        type: "execute",
+                        stmt: { sql: "SELECT * FROM licencias ORDER BY id DESC;" }
+                    },
                     { type: "close" }
                 ]
             };
@@ -77,11 +81,16 @@
                     body: JSON.stringify(bodyData)
                 });
 
+                if (!response.ok) {
+                    throw new Error("Error en la respuesta del servidor");
+                }
+
                 const data = await response.json();
-                const rows = data.results[0].response.result.rows;
+                const resultSet = data.results[0].response.result;
+                const rows = resultSet.rows;
 
                 if (!rows || rows.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay solicitudes.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay solicitudes registradas.</td></tr>';
                     return;
                 }
 
@@ -95,31 +104,39 @@
 
                     let badgeColor = estado === 'activo' ? 'bg-success' : 'bg-warning text-dark';
 
-                    tbody.innerHTML += `
+                    let tr = `
                         <tr>
                             <td>#${id}</td>
                             <td class="fw-semibold">${email}</td>
                             <td>${aplicativo}</td>
                             <td><span class="badge ${badgeColor}">${estado}</span></td>
                             <td>
-                                <input type="text" id="codigo-${id}" class="form-control form-control-sm" value="${codigo}" placeholder="Código...">
+                                <input type="text" id="codigo-${id}" class="form-control form-control-sm" value="${codigo}" placeholder="Escribe código...">
                             </td>
                             <td class="text-center">
                                 <button onclick="aprobarLicencia(${id})" class="btn btn-success btn-sm px-3">
-                                    <i class="fas fa-check me-1"></i> Guardar
+                                    <i class="fas fa-check me-1"></i> Aprobar y Guardar
                                 </button>
                             </td>
                         </tr>
                     `;
+                    tbody.innerHTML += tr;
                 });
+
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error de conexión. Verifica la consola.</td></tr>';
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error al conectar con la base de datos de Turso. Revisa la consola (F12).</td></tr>';
             }
         }
 
         async function aprobarLicencia(id) {
-            const nuevoCodigo = document.getElementById(`codigo-${id}`).value.trim();
-            if (!nuevoCodigo) return alert("Escribe un código.");
+            const inputCodigo = document.getElementById(`codigo-${id}`);
+            const nuevoCodigo = inputCodigo.value.trim();
+
+            if (!nuevoCodigo) {
+                alert("Por favor escribe un código de activación antes de aprobar.");
+                return;
+            }
 
             const bodyData = {
                 requests: [
@@ -127,22 +144,35 @@
                         type: "execute",
                         stmt: {
                             sql: "UPDATE licencias SET codigo_activacion = ?, estado = 'activo' WHERE id = ?;",
-                            args: [{ type: "text", value: nuevoCodigo }, { type: "integer", value: id }]
+                            args: [
+                                { type: "text", value: nuevoCodigo },
+                                { type: "integer", value: id }
+                            ]
                         }
                     },
                     { type: "close" }
                 ]
             };
 
-            const response = await fetch(urlHttp, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${tursoToken}`, "Content-Type": "application/json" },
-                body: JSON.stringify(bodyData)
-            });
+            try {
+                const response = await fetch(urlHttp, {
+                    method: "POST",
+                    headers: { 
+                        "Authorization": `Bearer ${tursoToken}`, 
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify(bodyData)
+                });
 
-            if (response.ok) {
-                alert("¡Actualizado!");
-                cargarSolicitudes();
+                if (response.ok) {
+                    alert(`¡Licencia #${id} aprobada con éxito!`);
+                    cargarSolicitudes();
+                } else {
+                    alert("Hubo un error al actualizar la base de datos.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error de conexión al guardar cambios.");
             }
         }
 
