@@ -8,42 +8,41 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .admin-container { max-width: 1000px; margin: 40px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .table-custom th { background-color: #343a40; color: white; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .admin-container { max-width: 1200px; margin: 20px auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .admin-container { padding: 30px; margin: 40px auto; } }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="container-fluid px-2 px-md-4">
         <div class="admin-container">
             <!-- Cabecera -->
-            <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom gap-3">
                 <div>
                     <h2><i class="fas fa-user-shield text-primary me-2"></i>Panel de Administración</h2>
-                    <p class="text-muted small mb-0">Gestiona las solicitudes de licencias y asigna códigos de acceso</p>
+                    <p class="text-muted small mb-0">Gestión de licencias y códigos de acceso</p>
                 </div>
-                <button onclick="cargarSolicitudes()" class="btn btn-outline-secondary btn-sm">
+                <button onclick="cargarSolicitudes()" class="btn btn-outline-secondary btn-sm align-self-start align-self-md-auto">
                     <i class="fas fa-sync-alt me-1"></i> Actualizar Lista
                 </button>
             </div>
 
             <!-- Tabla de Solicitudes -->
             <div class="table-responsive">
-                <table class="table table-hover align-middle table-custom">
-                    <thead>
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
                         <tr>
                             <th>ID</th>
-                            <th>Correo Electrónico</th>
-                            <th>Aplicativo</th>
-                            <th>Estado Actual</th>
+                            <th>Correo / Aplicativo</th>
+                            <th>Estado / Dispositivos</th>
                             <th>Código de Activación</th>
                             <th class="text-center">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tablaSolicitudes">
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Cargando solicitudes desde Turso...</td>
+                            <td colspan="5" class="text-center text-muted py-4">Cargando solicitudes...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -51,21 +50,29 @@
         </div>
     </div>
 
-    <!-- Script conectado mediante el puente de Cloudflare -->
     <script>
-        // Apuntando al Worker creado en Cloudflare como puente seguro
         const urlHttp = "https://turso-puente.acreditacionesmmg.workers.dev/";
         const tursoToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzOTA3ODQsImlkIjoiMDE5ZmVkMmItOGUwMS03NTBmLWE1OTctMzA5Mzk3NThhZDNiIiwia2lkIjoibGlxd0NQQ1RjVzZLMTJEUWNJMVhVejRCeGZUMWFnT3FDbHZ2Y3RnZ1BqQSIsInJpZCI6IjFjOTgzZGExLWI4MGUtNGE3OS05MjIxLTNhMDc1M2UyYzU0YiJ9.3KWHzJajGz62k_P-mvvBj25I1kwY8ZTJvSUCXUO61sILuwvZTpJoxzdLWr39nZI3DofY2PV_lVGW5BS4QunfAQ";
 
+        // Función para generar un código de activación aleatorio único por única vez
+        function generarCodigoAleatorio(id) {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let codigo = "MMG";
+            for (let i = 0; i < 3; i++) {
+                codigo += "-" + Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+            }
+            document.getElementById(`codigo-${id}`).value = codigo;
+        }
+
         async function cargarSolicitudes() {
             const tbody = document.getElementById('tablaSolicitudes');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Cargando...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Cargando...</td></tr>';
 
             const bodyData = {
                 requests: [
                     {
                         type: "execute",
-                        stmt: { sql: "SELECT * FROM licencias ORDER BY id DESC;" }
+                        stmt: { sql: "SELECT id, email, nombre_aplicativo, codigo_activacion, estado, dispositivos_conectados FROM licencias ORDER BY id DESC;" }
                     },
                     { type: "close" }
                 ]
@@ -81,16 +88,14 @@
                     body: JSON.stringify(bodyData)
                 });
 
-                if (!response.ok) {
-                    throw new Error("Error en la respuesta del servidor");
-                }
+                if (!response.ok) throw new Error("Error en la respuesta del servidor");
 
                 const data = await response.json();
                 const resultSet = data.results[0].response.result;
                 const rows = resultSet.rows;
 
                 if (!rows || rows.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay solicitudes registradas.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay solicitudes registradas.</td></tr>';
                     return;
                 }
 
@@ -101,21 +106,32 @@
                     const aplicativo = row[2].value;
                     const codigo = row[3] && row[3].value !== null ? row[3].value : '';
                     const estado = row[4].value;
+                    const dispositivos = row[5] ? row[5].value : 0;
 
                     let badgeColor = estado === 'activo' ? 'bg-success' : 'bg-warning text-dark';
 
                     let tr = `
                         <tr>
-                            <td>#${id}</td>
-                            <td class="fw-semibold">${email}</td>
-                            <td>${aplicativo}</td>
-                            <td><span class="badge ${badgeColor}">${estado}</span></td>
+                            <td><strong>#${id}</strong></td>
                             <td>
-                                <input type="text" id="codigo-${id}" class="form-control form-control-sm" value="${codigo}" placeholder="Escribe código...">
+                                <div class="fw-semibold text-break">${email}</div>
+                                <span class="badge bg-info text-dark mt-1">${aplicativo}</span>
+                            </td>
+                            <td>
+                                <span class="badge ${badgeColor}">${estado}</span>
+                                <div class="small text-muted mt-1"><i class="fas fa-laptop"></i> Dispositivos: ${dispositivos}</div>
+                            </td>
+                            <td>
+                                <div class="input-group input-group-sm mb-1" style="min-width: 220px;">
+                                    <input type="text" id="codigo-${id}" class="form-control" value="${codigo}" placeholder="Generar código...">
+                                    <button class="btn btn-outline-primary" type="button" onclick="generarCodigoAleatorio(${id})" title="Generar código aleatorio">
+                                        <i class="fas fa-magic"></i>
+                                    </button>
+                                </div>
                             </td>
                             <td class="text-center">
-                                <button onclick="aprobarLicencia(${id})" class="btn btn-success btn-sm px-3">
-                                    <i class="fas fa-check me-1"></i> Aprobar y Guardar
+                                <button onclick="aprobarLicencia(${id})" class="btn btn-success btn-sm w-100 text-nowrap">
+                                    <i class="fas fa-check me-1"></i> Aprobar
                                 </button>
                             </td>
                         </tr>
@@ -125,7 +141,7 @@
 
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error al conectar con la base de datos de Turso. Revisa la consola (F12).</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Error al conectar. Revisa la consola (F12).</td></tr>';
             }
         }
 
@@ -134,7 +150,7 @@
             const nuevoCodigo = inputCodigo.value.trim();
 
             if (!nuevoCodigo) {
-                alert("Por favor escribe un código de activación antes de aprobar.");
+                alert("Por favor genera o escribe un código de activación antes de aprobar.");
                 return;
             }
 
@@ -165,7 +181,7 @@
                 });
 
                 if (response.ok) {
-                    alert(`¡Licencia #${id} aprobada con éxito!`);
+                    alert(`¡Licencia #${id} aprobada y código guardado con éxito!`);
                     cargarSolicitudes();
                 } else {
                     alert("Hubo un error al actualizar la base de datos.");
