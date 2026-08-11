@@ -162,7 +162,7 @@
                             sql: "UPDATE licencias SET codigo_activacion = ?, estado = 'activo' WHERE id = ?;",
                             args: [
                                 { type: "text", value: nuevoCodigo },
-                                { type: "integer", value: Number(id) }
+                                { type: "text", value: String(id) }
                             ]
                         }
                     },
