@@ -8,9 +8,86 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .admin-container { max-width: 1200px; margin: 20px auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        @media (min-width: 768px) { .admin-container { padding: 30px; margin: 40px auto; } }
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --bg-color: #f8f9fa;
+        }
+        body { 
+            background-color: var(--bg-color); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            color: #333;
+        }
+        .admin-container { 
+            max-width: 1300px; 
+            margin: 20px auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04); 
+        }
+        @media (min-width: 768px) { 
+            .admin-container { padding: 35px; margin: 40px auto; } 
+        }
+        .header-title {
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .search-box {
+            position: relative;
+        }
+        .search-box .fa-search {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+        .search-input {
+            padding-left: 42px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            transition: all 0.3s;
+        }
+        .search-input:focus {
+            background-color: #fff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1);
+        }
+        .table-custom th {
+            background-color: #1e293b;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 12px 16px;
+        }
+        .table-custom td {
+            padding: 14px 16px;
+            vertical-align: middle;
+        }
+        .badge-pending {
+            background-color: #f59e0b;
+            color: white;
+        }
+        .badge-active {
+            background-color: #10b981;
+            color: white;
+        }
+        .app-badge {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            font-weight: 500;
+            font-size: 0.75rem;
+        }
+        .btn-action {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -20,29 +97,45 @@
             <!-- Cabecera -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom gap-3">
                 <div>
-                    <h2><i class="fas fa-user-shield text-primary me-2"></i>Panel de Administración</h2>
-                    <p class="text-muted small mb-0">Gestión de licencias y códigos de acceso</p>
+                    <h2 class="header-title mb-1"><i class="fas fa-shield-alt text-primary me-2"></i>Panel de Administración</h2>
+                    <p class="text-muted small mb-0">Gestión avanzada de licencias, estados y códigos de acceso</p>
                 </div>
-                <button onclick="cargarSolicitudes()" class="btn btn-outline-secondary btn-sm align-self-start align-self-md-auto">
-                    <i class="fas fa-sync-alt me-1"></i> Actualizar Lista
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="contadorLicencias" class="badge bg-light text-dark border px-3 py-2 fw-normal">Total: 0</span>
+                    <button onclick="cargarSolicitudes()" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-sync-alt me-1"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtro de Búsqueda -->
+            <div class="row mb-4">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="inputFiltroCorreo" class="form-control search-input" placeholder="Filtrar por correo o aplicativo..." onkeyup="filtrarTabla()">
+                    </div>
+                </div>
             </div>
 
             <!-- Tabla de Solicitudes -->
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-dark">
+                <table class="table table-hover align-middle table-custom rounded-3 overflow-hidden">
+                    <thead>
                         <tr>
                             <th>ID</th>
                             <th>Correo / Aplicativo</th>
                             <th>Estado / Dispositivos</th>
                             <th>Código de Activación</th>
-                            <th class="text-center">Acción</th>
+                            <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaSolicitudes">
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">Cargando solicitudes...</td>
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                Cargando solicitudes...
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -54,19 +147,37 @@
         const urlHttp = "https://turso-puente.acreditacionesmmg.workers.dev/";
         const tursoToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzOTA3ODQsImlkIjoiMDE5ZmVkMmItOGUwMS03NTBmLWE1OTctMzA5Mzk3NThhZDNiIiwia2lkIjoibGlxd0NQQ1RjVzZLMTJEUWNJMVhVejRCeGZUMWFnT3FDbHZ2Y3RnZ1BqQSIsInJpZCI6IjFjOTgzZGExLWI4MGUtNGE3OS05MjIxLTNhMDc1M2UyYzU0YiJ9.3KWHzJajGz62k_P-mvvBj25I1kwY8ZTJvSUCXUO61sILuwvZTpJoxzdLWr39nZI3DofY2PV_lVGW5BS4QunfAQ";
 
-        // Función para generar un código de activación aleatorio
+        let listaGlobalLicencias = [];
+
+        // Generar código de activación aleatorio
         function generarCodigoAleatorio(id) {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             let codigo = "MMG";
             for (let i = 0; i < 3; i++) {
                 codigo += "-" + Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
             }
-            document.getElementById(`codigo-${id}`).value = codigo;
+            const input = document.getElementById(`codigo-${id}`);
+            if (input) input.value = codigo;
+        }
+
+        // Copiar código al portapapeles
+        function copiarCodigo(id) {
+            const input = document.getElementById(`codigo-${id}`);
+            if (!input || !input.value.trim()) {
+                alert("No hay ningún código para copiar.");
+                return;
+            }
+            navigator.clipboard.writeText(input.value.trim()).then(() => {
+                alert(`¡Código copiado al portapapeles: ${input.value.trim()}! Ya puedes enviarlo a tu cliente.`);
+            }).catch(err => {
+                console.error("Error al copiar: ", err);
+                alert("No se pudo copiar el código.");
+            });
         }
 
         async function cargarSolicitudes() {
             const tbody = document.getElementById('tablaSolicitudes');
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Cargando...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando...</td></tr>';
 
             const bodyData = {
                 requests: [
@@ -95,59 +206,93 @@
                 const rows = resultSet.rows;
 
                 if (!rows || rows.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay solicitudes registradas.</td></tr>';
+                    listaGlobalLicencias = [];
+                    renderizarTabla([]);
+                    document.getElementById('contadorLicencias').innerText = 'Total: 0';
                     return;
                 }
 
-                tbody.innerHTML = '';
-                rows.forEach(row => {
-                    const id = row[0].value;
-                    const email = row[1].value;
-                    const aplicativo = row[2].value;
-                    const codigo = row[3] && row[3].value !== null ? row[3].value : '';
-                    const estado = row[4].value;
-                    const dispositivos = row[5] ? row[5].value : 0;
+                listaGlobalLicencias = rows.map(row => ({
+                    id: row[0].value,
+                    email: row[1].value,
+                    aplicativo: row[2] && row[2].value ? row[2].value : 'General',
+                    codigo: row[3] && row[3].value !== null ? row[3].value : '',
+                    estado: row[4] && row[4].value ? row[4].value : 'pendiente',
+                    dispositivos: row[5] ? row[5].value : 0
+                }));
 
-                    let badgeColor = estado === 'activo' ? 'bg-success' : 'bg-warning text-dark';
-
-                    let tr = `
-                        <tr>
-                            <td><strong>#${id}</strong></td>
-                            <td>
-                                <div class="fw-semibold text-break">${email}</div>
-                                <span class="badge bg-info text-dark mt-1">${aplicativo}</span>
-                            </td>
-                            <td>
-                                <span class="badge ${badgeColor}">${estado}</span>
-                                <div class="small text-muted mt-1"><i class="fas fa-laptop"></i> Dispositivos: ${dispositivos}</div>
-                            </td>
-                            <td>
-                                <div class="input-group input-group-sm mb-1" style="min-width: 220px;">
-                                    <input type="text" id="codigo-${id}" class="form-control" value="${codigo}" placeholder="Generar código...">
-                                    <button class="btn btn-outline-primary" type="button" onclick="generarCodigoAleatorio(${id})" title="Generar código aleatorio">
-                                        <i class="fas fa-magic"></i>
-                                    </button>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                <button onclick="aprobarLicencia(${id})" class="btn btn-success btn-sm w-100 text-nowrap">
-                                    <i class="fas fa-check me-1"></i> Aprobar
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += tr;
-                });
+                document.getElementById('contadorLicencias').innerText = `Total: ${listaGlobalLicencias.length}`;
+                renderizarTabla(listaGlobalLicencias);
 
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Error al conectar. Revisa la consola (F12).</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-5"><i class="fas fa-exclamation-triangle me-1"></i> Error al conectar con la base de datos.</td></tr>';
             }
+        }
+
+        function filtrarTabla() {
+            const filtro = document.getElementById('inputFiltroCorreo').value.toLowerCase();
+            const filtrados = listaGlobalLicencias.filter(item => 
+                item.email.toLowerCase().includes(filtro) || 
+                item.aplicativo.toLowerCase().includes(filtro)
+            );
+            renderizarTabla(filtrados);
+        }
+
+        function renderizarTabla(datos) {
+            const tbody = document.getElementById('tablaSolicitudes');
+            if (!datos || datos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5">No se encontraron registros coincidentes.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            datos.forEach(item => {
+                const estadoLower = item.estado ? item.estado.toLowerCase() : 'pendiente';
+                let badgeClass = estadoLower === 'activo' ? 'badge-active' : 'badge-pending';
+                let textoEstado = estadoLower === 'activo' ? 'activo' : 'pendiente';
+
+                let tr = `
+                    <tr>
+                        <td><strong>#${item.id}</strong></td>
+                        <td>
+                            <div class="fw-semibold text-break">${item.email}</div>
+                            <span class="badge app-badge mt-1">${item.aplicativo}</span>
+                        </td>
+                        <td>
+                            <span class="badge ${badgeClass} text-uppercase">${textoEstado}</span>
+                            <div class="small text-muted mt-1"><i class="fas fa-laptop me-1"></i>Dispositivos: ${item.dispositivos}</div>
+                        </td>
+                        <td>
+                            <div class="input-group input-group-sm mb-1" style="min-width: 240px;">
+                                <input type="text" id="codigo-${item.id}" class="form-control" value="${item.codigo}" placeholder="Generar código...">
+                                <button class="btn btn-outline-secondary" type="button" onclick="generarCodigoAleatorio(${item.id})" title="Generar código aleatorio">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                                <button class="btn btn-outline-info" type="button" onclick="copiarCodigo(${item.id})" title="Copiar código">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-1">
+                                <button onclick="aprobarLicencia(${item.id})" class="btn btn-success btn-action text-nowrap" title="Aprobar licencia">
+                                    <i class="fas fa-check me-1"></i> Aprobar
+                                </button>
+                                <button onclick="quitarLicencia(${item.id})" class="btn btn-outline-danger btn-action text-nowrap" title="Quitar licencia (Pasar a pendiente / limpiar)">
+                                    <i class="fas fa-undo me-1"></i> Quitar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += tr;
+            });
         }
 
         async function aprobarLicencia(id) {
             const inputCodigo = document.getElementById(`codigo-${id}`);
-            const nuevoCodigo = inputCodigo.value.trim();
+            const nuevoCodigo = inputCodigo ? inputCodigo.value.trim() : '';
 
             if (!nuevoCodigo) {
                 alert("Por favor genera o escribe un código de activación antes de aprobar.");
@@ -183,15 +328,60 @@
                 const resultJson = await response.json();
 
                 if (response.ok && !resultJson.results[0].response.error) {
-                    alert(`¡Licencia #${id} aprobada y código guardado con éxito! Ya puedes copiarlo y enviarlo al usuario.`);
+                    alert(`¡Licencia #${id} aprobada y código guardado con éxito!`);
                     cargarSolicitudes();
                 } else {
                     console.error("Error devuelto por Turso:", resultJson);
-                    alert("Hubo un error al actualizar la base de datos. Revisa la consola (F12).");
+                    alert("Hubo un error al actualizar la base de datos.");
                 }
             } catch (error) {
                 console.error(error);
                 alert("Error de conexión al guardar cambios.");
+            }
+        }
+
+        async function quitarLicencia(id) {
+            if (!confirm(`¿Estás seguro de quitar la licencia #${id}? Esto cambiará su estado a pendiente.`)) {
+                return;
+            }
+
+            const bodyData = {
+                requests: [
+                    {
+                        type: "execute",
+                        stmt: {
+                            sql: "UPDATE licencias SET estado = 'pendiente' WHERE id = ?;",
+                            args: [
+                                { type: "text", value: String(id) }
+                            ]
+                        }
+                    },
+                    { type: "close" }
+                ]
+            };
+
+            try {
+                const response = await fetch(urlHttp, {
+                    method: "POST",
+                    headers: { 
+                        "Authorization": `Bearer ${tursoToken}`, 
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify(bodyData)
+                });
+
+                const resultJson = await response.json();
+
+                if (response.ok && !resultJson.results[0].response.error) {
+                    alert(`Se ha quitado la licencia #${id} exitosamente.`);
+                    cargarSolicitudes();
+                } else {
+                    console.error("Error devuelto por Turso:", resultJson);
+                    alert("Hubo un error al quitar la licencia.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error de conexión al actualizar la licencia.");
             }
         }
 
