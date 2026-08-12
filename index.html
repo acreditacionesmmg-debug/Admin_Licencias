@@ -76,6 +76,10 @@
             background-color: #10b981;
             color: white;
         }
+        .badge-disabled {
+            background-color: #dc3545;
+            color: white;
+        }
         .app-badge {
             background-color: #e0e7ff;
             color: #3730a3;
@@ -87,6 +91,42 @@
             font-weight: 500;
             padding: 6px 12px;
             font-size: 0.85rem;
+        }
+
+        /* DISEÑO RESPONSIVE: Conversión a Tarjetas en dispositivos móviles */
+        @media (max-width: 767px) {
+            .table-custom thead { display: none; }
+            .table-custom, .table-custom tbody, .table-custom tr, .table-custom td { display: block; width: 100%; }
+            .table-custom tr { 
+                margin-bottom: 20px; 
+                border: 1px solid #e2e8f0; 
+                border-radius: 12px; 
+                padding: 15px; 
+                background: #fff;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+            }
+            .table-custom td { 
+                text-align: right; 
+                padding: 10px 0; 
+                border: none; 
+                border-bottom: 1px solid #f1f5f9;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .table-custom td:last-child { border-bottom: none; }
+            .table-custom td::before { 
+                content: attr(data-label); 
+                font-weight: 600; 
+                color: #64748b; 
+                font-size: 0.75rem; 
+                text-transform: uppercase;
+            }
+            /* Adaptar elementos internos dentro de la celda en móvil */
+            .table-custom td > div { width: 100%; text-align: right; }
+            .table-custom .input-group { width: 100% !important; justify-content: flex-end; }
+            .table-custom .d-flex.justify-content-center { justify-content: flex-end !important; }
+            .btn-action { width: auto; }
         }
     </style>
 </head>
@@ -109,11 +149,24 @@
             </div>
 
             <!-- Filtro de Búsqueda -->
-            <div class="row mb-4">
+            <div class="row mb-4 align-items-center g-3">
                 <div class="col-12 col-md-6 col-lg-4">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
                         <input type="text" id="inputFiltroCorreo" class="form-control search-input" placeholder="Filtrar por correo o aplicativo..." onkeyup="filtrarTabla()">
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-8">
+                    <div class="d-flex flex-wrap justify-content-md-end gap-2" aria-label="Filtrar licencias por estado">
+                        <button type="button" class="btn btn-outline-success btn-sm btn-filtro-estado" data-estado="activo" onclick="filtrarPorEstado('activo')" aria-pressed="false">
+                            <i class="fas fa-check-circle me-1"></i> Activo
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-filtro-estado" data-estado="desactivado" onclick="filtrarPorEstado('desactivado')" aria-pressed="false">
+                            <i class="fas fa-ban me-1"></i> Desactivado
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm btn-filtro-estado" data-estado="pendiente" onclick="filtrarPorEstado('pendiente')" aria-pressed="false">
+                            <i class="fas fa-clock me-1"></i> Pendiente
+                        </button>
                     </div>
                 </div>
             </div>
@@ -148,8 +201,8 @@
         const tursoToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzOTA3ODQsImlkIjoiMDE5ZmVkMmItOGUwMS03NTBmLWE1OTctMzA5Mzk3NThhZDNiIiwia2lkIjoibGlxd0NQQ1RjVzZLMTJEUWNJMVhVejRCeGZUMWFnT3FDbHZ2Y3RnZ1BqQSIsInJpZCI6IjFjOTgzZGExLWI4MGUtNGE3OS05MjIxLTNhMDc1M2UyYzU0YiJ9.3KWHzJajGz62k_P-mvvBj25I1kwY8ZTJvSUCXUO61sILuwvZTpJoxzdLWr39nZI3DofY2PV_lVGW5BS4QunfAQ";
 
         let listaGlobalLicencias = [];
+        let filtroEstadoActual = '';
 
-        // Generar código de activación aleatorio
         function generarCodigoAleatorio(id) {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             let codigo = "MMG";
@@ -160,7 +213,6 @@
             if (input) input.value = codigo;
         }
 
-        // Copiar código al portapapeles
         function copiarCodigo(id) {
             const input = document.getElementById(`codigo-${id}`);
             if (!input || !input.value.trim()) {
@@ -222,7 +274,7 @@
                 }));
 
                 document.getElementById('contadorLicencias').innerText = `Total: ${listaGlobalLicencias.length}`;
-                renderizarTabla(listaGlobalLicencias);
+                filtrarTabla();
 
             } catch (error) {
                 console.error(error);
@@ -232,11 +284,26 @@
 
         function filtrarTabla() {
             const filtro = document.getElementById('inputFiltroCorreo').value.toLowerCase();
-            const filtrados = listaGlobalLicencias.filter(item => 
-                item.email.toLowerCase().includes(filtro) || 
-                item.aplicativo.toLowerCase().includes(filtro)
-            );
+            const filtrados = listaGlobalLicencias.filter(item => {
+                const coincideTexto = item.email.toLowerCase().includes(filtro) ||
+                    item.aplicativo.toLowerCase().includes(filtro);
+                const estado = item.estado ? item.estado.toLowerCase() : 'pendiente';
+                const coincideEstado = !filtroEstadoActual || estado === filtroEstadoActual;
+                return coincideTexto && coincideEstado;
+            });
             renderizarTabla(filtrados);
+        }
+
+        function filtrarPorEstado(estado) {
+            filtroEstadoActual = filtroEstadoActual === estado ? '' : estado;
+
+            document.querySelectorAll('.btn-filtro-estado').forEach(boton => {
+                const seleccionado = boton.dataset.estado === filtroEstadoActual;
+                boton.setAttribute('aria-pressed', String(seleccionado));
+                boton.classList.toggle('active', seleccionado);
+            });
+
+            filtrarTabla();
         }
 
         function renderizarTabla(datos) {
@@ -249,44 +316,58 @@
             tbody.innerHTML = '';
             datos.forEach(item => {
                 const estadoLower = item.estado ? item.estado.toLowerCase() : 'pendiente';
-                let badgeClass = estadoLower === 'activo' ? 'badge-active' : 'badge-pending';
-                let textoEstado = estadoLower === 'activo' ? 'activo' : 'pendiente';
+                let badgeClass = 'badge-pending';
+                let textoEstado = 'pendiente';
 
-                let tr = `
-                    <tr>
-                        <td><strong>#${item.id}</strong></td>
-                        <td>
+                if (estadoLower === 'activo') {
+                    badgeClass = 'badge-active';
+                    textoEstado = 'activo';
+                } else if (estadoLower === 'desactivado') {
+                    badgeClass = 'badge-disabled';
+                    textoEstado = 'desactivado';
+                }
+
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td data-label="ID"><strong>#${item.id}</strong></td>
+                    <td data-label="Correo / Aplicativo">
+                        <div>
                             <div class="fw-semibold text-break">${item.email}</div>
                             <span class="badge app-badge mt-1">${item.aplicativo}</span>
-                        </td>
-                        <td>
+                        </div>
+                    </td>
+                    <td data-label="Estado / Dispositivos">
+                        <div>
                             <span class="badge ${badgeClass} text-uppercase">${textoEstado}</span>
                             <div class="small text-muted mt-1"><i class="fas fa-laptop me-1"></i>Dispositivos: ${item.dispositivos}</div>
-                        </td>
-                        <td>
-                            <div class="input-group input-group-sm mb-1" style="min-width: 240px;">
-                                <input type="text" id="codigo-${item.id}" class="form-control" value="${item.codigo}" placeholder="Generar código...">
-                                <button class="btn btn-outline-secondary" type="button" onclick="generarCodigoAleatorio(${item.id})" title="Generar código aleatorio">
-                                    <i class="fas fa-magic"></i>
-                                </button>
-                                <button class="btn btn-outline-info" type="button" onclick="copiarCodigo(${item.id})" title="Copiar código">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-1">
-                                <button onclick="aprobarLicencia(${item.id})" class="btn btn-success btn-action text-nowrap" title="Aprobar licencia">
-                                    <i class="fas fa-check me-1"></i> Aprobar
-                                </button>
-                                <button onclick="quitarLicencia(${item.id})" class="btn btn-outline-danger btn-action text-nowrap" title="Quitar licencia (Pasar a pendiente / limpiar)">
-                                    <i class="fas fa-undo me-1"></i> Quitar
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+                        </div>
+                    </td>
+                    <td data-label="Código de Activación">
+                        <div class="input-group input-group-sm mb-1" style="min-width: 220px;">
+                            <input type="text" id="codigo-${item.id}" class="form-control" value="${item.codigo}" placeholder="Generar código...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="generarCodigoAleatorio(${item.id})" title="Generar código aleatorio">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                            <button class="btn btn-outline-info" type="button" onclick="copiarCodigo(${item.id})" title="Copiar código">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td data-label="Acciones" class="text-center">
+                        <div class="d-flex justify-content-center gap-1 flex-wrap">
+                            <button onclick="aprobarLicencia(${item.id})" class="btn btn-success btn-action text-nowrap" title="Aprobar licencia">
+                                <i class="fas fa-check me-1"></i> Aprobar
+                            </button>
+                            <button onclick="quitarLicencia(${item.id})" class="btn btn-outline-danger btn-action text-nowrap" title="Quitar licencia">
+                                <i class="fas fa-undo me-1"></i> Quitar
+                            </button>
+                            <button onclick="eliminarLicencia(${item.id})" class="btn btn-danger btn-action text-nowrap" title="Eliminar licencia definitivamente">
+                                <i class="fas fa-trash-alt me-1"></i> Eliminar
+                            </button>
+                        </div>
+                    </td>
                 `;
-                tbody.innerHTML += tr;
+                tbody.appendChild(tr);
             });
         }
 
@@ -341,7 +422,7 @@
         }
 
         async function quitarLicencia(id) {
-            if (!confirm(`¿Estás seguro de quitar la licencia #${id}? Esto cambiará su estado a pendiente.`)) {
+            if (!confirm(`¿Estás seguro de quitar la licencia #${id}? Se pondrán sus dispositivos en 0 y su estado cambiará a desactivado.`)) {
                 return;
             }
 
@@ -350,7 +431,7 @@
                     {
                         type: "execute",
                         stmt: {
-                            sql: "UPDATE licencias SET estado = 'pendiente' WHERE id = ?;",
+                            sql: "UPDATE licencias SET estado = 'desactivado', dispositivos_conectados = 0 WHERE id = ?;",
                             args: [
                                 { type: "text", value: String(id) }
                             ]
@@ -382,6 +463,51 @@
             } catch (error) {
                 console.error(error);
                 alert("Error de conexión al actualizar la licencia.");
+            }
+        }
+
+        async function eliminarLicencia(id) {
+            if (!confirm(`¿Estás seguro de eliminar definitivamente la licencia #${id}? Esta acción no se puede deshacer.`)) {
+                return;
+            }
+
+            const bodyData = {
+                requests: [
+                    {
+                        type: "execute",
+                        stmt: {
+                            sql: "DELETE FROM licencias WHERE id = ?;",
+                            args: [
+                                { type: "text", value: String(id) }
+                            ]
+                        }
+                    },
+                    { type: "close" }
+                ]
+            };
+
+            try {
+                const response = await fetch(urlHttp, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${tursoToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(bodyData)
+                });
+
+                const resultJson = await response.json();
+
+                if (response.ok && !resultJson.results[0].response.error) {
+                    alert(`La licencia #${id} fue eliminada definitivamente.`);
+                    cargarSolicitudes();
+                } else {
+                    console.error("Error devuelto por Turso:", resultJson);
+                    alert("Hubo un error al eliminar la licencia de la base de datos.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error de conexión al eliminar la licencia.");
             }
         }
 
