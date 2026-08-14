@@ -92,6 +92,105 @@
             padding: 6px 12px;
             font-size: 0.85rem;
         }
+        body:not(.sesion-activa) .panel-principal {
+            display: none;
+        }
+        .acceso-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background:
+                radial-gradient(circle at 20% 15%, rgba(13, 110, 253, 0.12), transparent 34%),
+                radial-gradient(circle at 85% 85%, rgba(67, 97, 238, 0.10), transparent 32%),
+                #f4f7fb;
+        }
+        body.sesion-activa .acceso-overlay {
+            display: none;
+        }
+        .acceso-card {
+            width: 100%;
+            max-width: 430px;
+            padding: 38px;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 22px;
+            background: #fff;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.13);
+        }
+        .acceso-icono {
+            width: 64px;
+            height: 64px;
+            display: grid;
+            place-items: center;
+            margin: 0 auto 20px;
+            border: 1px solid #dbe8ff;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #edf4ff, #dfeaff);
+            color: #0d6efd;
+            font-size: 1.8rem;
+            box-shadow: 0 10px 24px rgba(13, 110, 253, 0.12);
+        }
+        .acceso-card .form-label {
+            margin-bottom: 7px;
+            color: #334155;
+            font-size: 0.9rem;
+        }
+        .acceso-card .form-control {
+            min-height: 48px;
+            border-color: #d7dee8;
+            border-radius: 10px;
+            color: #172033;
+            box-shadow: none;
+        }
+        .acceso-card .form-control:focus {
+            border-color: #6ea8fe;
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.12);
+        }
+        .campo-clave {
+            position: relative;
+        }
+        .campo-clave .form-control {
+            padding-right: 50px;
+        }
+        .btn-ver-clave {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            z-index: 5;
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            transform: translateY(-50%);
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #64748b;
+        }
+        .btn-ver-clave:hover,
+        .btn-ver-clave:focus-visible {
+            background: #eef4ff;
+            color: #0d6efd;
+        }
+        .btn-ingresar {
+            min-height: 48px;
+            border: 0;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0d6efd, #315bea);
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.2);
+        }
+        .btn-ingresar:hover {
+            background: linear-gradient(135deg, #0b5ed7, #284bc9);
+            transform: translateY(-1px);
+        }
+        @media (max-width: 480px) {
+            .acceso-card {
+                padding: 30px 24px;
+                border-radius: 18px;
+            }
+        }
 
         /* DISEÑO RESPONSIVE: Conversión a Tarjetas en dispositivos móviles */
         @media (max-width: 767px) {
@@ -132,7 +231,34 @@
 </head>
 <body>
 
-    <div class="container-fluid px-2 px-md-4">
+    <div id="accesoOverlay" class="acceso-overlay" role="dialog" aria-modal="true" aria-labelledby="tituloAcceso">
+        <div class="acceso-card">
+            <div class="acceso-icono"><i class="fas fa-shield-alt"></i></div>
+            <h2 id="tituloAcceso" class="h4 text-center fw-bold mb-2">Acceso administrativo</h2>
+            <p class="text-muted text-center small mb-4">Identifícate para gestionar licencias y dispositivos</p>
+            <form id="formularioAcceso" autocomplete="off">
+                <div class="mb-3">
+                    <label for="usuarioAcceso" class="form-label fw-semibold">Usuario</label>
+                    <input type="text" id="usuarioAcceso" class="form-control" autocomplete="username" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label for="claveAcceso" class="form-label fw-semibold">Contraseña</label>
+                    <div class="campo-clave">
+                        <input type="password" id="claveAcceso" class="form-control" autocomplete="current-password" required>
+                        <button type="button" id="botonVerClave" class="btn-ver-clave" onclick="alternarVisibilidadClave()" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="mensajeAcceso" class="alert alert-danger py-2 small d-none" role="alert"></div>
+                <button type="submit" class="btn btn-primary btn-ingresar w-100 fw-semibold">
+                    Ingresar <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container-fluid px-2 px-md-4 panel-principal">
         <div class="admin-container">
             <!-- Cabecera -->
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom gap-3">
@@ -140,10 +266,16 @@
                     <h2 class="header-title mb-1"><i class="fas fa-shield-alt text-primary me-2"></i>Panel de Administración</h2>
                     <p class="text-muted small mb-0">Gestión avanzada de licencias, estados y códigos de acceso</p>
                 </div>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                    <button id="botonCompartir" onclick="compartirEnlace()" class="btn btn-outline-info btn-sm" title="Compartir enlace del panel">
+                        <i class="fas fa-share-alt me-1"></i> Compartir enlace
+                    </button>
                     <span id="contadorLicencias" class="badge bg-light text-dark border px-3 py-2 fw-normal">Total: 0</span>
                     <button onclick="cargarSolicitudes()" class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-sync-alt me-1"></i> Actualizar
+                    </button>
+                    <button onclick="cerrarSesion()" class="btn btn-outline-secondary btn-sm" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt me-1"></i> Salir
                     </button>
                 </div>
             </div>
@@ -202,6 +334,148 @@
 
         let listaGlobalLicencias = [];
         let filtroEstadoActual = '';
+        const USUARIO_ADMIN = 'Admin';
+        const CLAVE_ADMIN = '12399';
+        const TIEMPO_INACTIVIDAD = 15 * 60 * 1000;
+        const URL_PANEL = 'https://acreditacionesmmg-debug.github.io/Admin_Licencias/';
+        let temporizadorInactividad = null;
+        let ultimaActualizacionActividad = 0;
+
+        function sesionEstaActiva() {
+            return document.body.classList.contains('sesion-activa');
+        }
+
+        function registrarActividad() {
+            if (!sesionEstaActiva()) return;
+
+            const ahora = Date.now();
+            if (ahora - ultimaActualizacionActividad >= 5000) {
+                sessionStorage.setItem('ultimaActividadAdmin', String(ahora));
+                ultimaActualizacionActividad = ahora;
+            }
+
+            clearTimeout(temporizadorInactividad);
+            temporizadorInactividad = setTimeout(() => {
+                bloquearSesion('La sesión se cerró por 15 minutos de inactividad.');
+            }, TIEMPO_INACTIVIDAD);
+        }
+
+        function activarSesion() {
+            document.body.classList.add('sesion-activa');
+            sessionStorage.setItem('sesionAdminActiva', 'true');
+            sessionStorage.setItem('ultimaActividadAdmin', String(Date.now()));
+            ultimaActualizacionActividad = Date.now();
+            document.getElementById('mensajeAcceso').classList.add('d-none');
+            registrarActividad();
+            cargarSolicitudes();
+        }
+
+        function bloquearSesion(mensaje = '') {
+            clearTimeout(temporizadorInactividad);
+            document.body.classList.remove('sesion-activa');
+            sessionStorage.removeItem('sesionAdminActiva');
+            sessionStorage.removeItem('ultimaActividadAdmin');
+            listaGlobalLicencias = [];
+
+            const formulario = document.getElementById('formularioAcceso');
+            const mensajeAcceso = document.getElementById('mensajeAcceso');
+            const campoClave = document.getElementById('claveAcceso');
+            const botonVerClave = document.getElementById('botonVerClave');
+            formulario.reset();
+            campoClave.type = 'password';
+            botonVerClave.setAttribute('aria-pressed', 'false');
+            botonVerClave.setAttribute('aria-label', 'Mostrar contraseña');
+            botonVerClave.title = 'Mostrar contraseña';
+            botonVerClave.querySelector('i').className = 'fas fa-eye';
+            mensajeAcceso.textContent = mensaje;
+            mensajeAcceso.classList.toggle('d-none', !mensaje);
+            setTimeout(() => document.getElementById('usuarioAcceso').focus(), 0);
+        }
+
+        function cerrarSesion() {
+            bloquearSesion('La sesión se cerró correctamente.');
+        }
+
+        async function compartirEnlace() {
+            const boton = document.getElementById('botonCompartir');
+
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: 'Panel de Administración de Licencias',
+                        text: 'Acceso al panel de administración de licencias:',
+                        url: URL_PANEL
+                    });
+                    return;
+                }
+
+                await navigator.clipboard.writeText(URL_PANEL);
+                boton.innerHTML = '<i class="fas fa-check me-1"></i> Enlace copiado';
+                boton.classList.replace('btn-outline-info', 'btn-success');
+                setTimeout(() => {
+                    boton.innerHTML = '<i class="fas fa-share-alt me-1"></i> Compartir enlace';
+                    boton.classList.replace('btn-success', 'btn-outline-info');
+                }, 2200);
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                prompt('Copia este enlace para compartirlo:', URL_PANEL);
+            }
+        }
+
+        function alternarVisibilidadClave() {
+            const campoClave = document.getElementById('claveAcceso');
+            const boton = document.getElementById('botonVerClave');
+            const icono = boton.querySelector('i');
+            const mostrar = campoClave.type === 'password';
+
+            campoClave.type = mostrar ? 'text' : 'password';
+            boton.setAttribute('aria-pressed', String(mostrar));
+            boton.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            boton.title = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
+            icono.classList.toggle('fa-eye', !mostrar);
+            icono.classList.toggle('fa-eye-slash', mostrar);
+            campoClave.focus();
+        }
+
+        function iniciarControlDeAcceso() {
+            document.getElementById('formularioAcceso').addEventListener('submit', evento => {
+                evento.preventDefault();
+                const usuario = document.getElementById('usuarioAcceso').value;
+                const clave = document.getElementById('claveAcceso').value;
+
+                if (usuario === USUARIO_ADMIN && clave === CLAVE_ADMIN) {
+                    activarSesion();
+                } else {
+                    const mensajeAcceso = document.getElementById('mensajeAcceso');
+                    mensajeAcceso.textContent = 'Usuario o contraseña incorrectos.';
+                    mensajeAcceso.classList.remove('d-none');
+                    document.getElementById('claveAcceso').value = '';
+                    document.getElementById('claveAcceso').focus();
+                }
+            });
+
+            ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'].forEach(nombreEvento => {
+                document.addEventListener(nombreEvento, registrarActividad, { passive: true });
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState !== 'visible' || !sesionEstaActiva()) return;
+                const ultimaActividad = Number(sessionStorage.getItem('ultimaActividadAdmin') || 0);
+                if (!ultimaActividad || Date.now() - ultimaActividad >= TIEMPO_INACTIVIDAD) {
+                    bloquearSesion('La sesión se cerró por 15 minutos de inactividad.');
+                } else {
+                    registrarActividad();
+                }
+            });
+
+            const sesionGuardada = sessionStorage.getItem('sesionAdminActiva') === 'true';
+            const ultimaActividad = Number(sessionStorage.getItem('ultimaActividadAdmin') || 0);
+            if (sesionGuardada && ultimaActividad && Date.now() - ultimaActividad < TIEMPO_INACTIVIDAD) {
+                activarSesion();
+            } else {
+                bloquearSesion();
+            }
+        }
 
         function generarCodigoAleatorio(id) {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -511,7 +785,7 @@
             }
         }
 
-        window.onload = cargarSolicitudes;
+        window.onload = iniciarControlDeAcceso;
     </script>
 </body>
 </html>
